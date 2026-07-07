@@ -22,6 +22,34 @@ func TestDecodeRejectsDisconnectStreamAction(t *testing.T) {
 	}
 }
 
+func TestDecodeReasoningEqualsAcceptsStringInts(t *testing.T) {
+	cfg, err := Decode([]byte(`
+reasoning_equals:
+  - "516"
+  - "1034"
+  - 1552
+  - "2070"
+`))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	want := []int{516, 1034, 1552, 2070}
+	if !equalInts(cfg.ReasoningEquals, want) {
+		t.Fatalf("ReasoningEquals = %#v, want %#v", cfg.ReasoningEquals, want)
+	}
+}
+
+func TestDecodeReasoningEqualsRejectsInvalidString(t *testing.T) {
+	_, err := Decode([]byte(`
+reasoning_equals:
+  - "516"
+  - nope
+`))
+	if err == nil {
+		t.Fatal("Decode() error = nil, want invalid reasoning_equals")
+	}
+}
+
 func TestSupportsModelWithPrefixes(t *testing.T) {
 	cfg := Default()
 	cfg.Models = []string{"exact"}
@@ -32,4 +60,16 @@ func TestSupportsModelWithPrefixes(t *testing.T) {
 	if SupportsModel(cfg, "claude-sonnet") {
 		t.Fatal("SupportsModel() matched unexpected model")
 	}
+}
+
+func equalInts(left, right []int) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
 }

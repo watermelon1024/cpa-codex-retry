@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -43,7 +44,7 @@ type rawConfig struct {
 	ModelPrefixes               []string `yaml:"model_prefixes"`
 	InterceptRuleMode           string   `yaml:"intercept_rule_mode"`
 	ReasoningMatchMode          string   `yaml:"reasoning_match_mode"`
-	ReasoningEquals             []int    `yaml:"reasoning_equals"`
+	ReasoningEquals             intList  `yaml:"reasoning_equals"`
 	ContinuationMarkerText      string   `yaml:"continuation_marker_text"`
 	InterceptStreaming          *bool    `yaml:"intercept_streaming"`
 	InterceptNonStreaming       *bool    `yaml:"intercept_non_streaming"`
@@ -193,6 +194,43 @@ func chooseInts(values, fallback []int) []int {
 		return append([]int(nil), fallback...)
 	}
 	return append([]int(nil), values...)
+}
+
+type intList []int
+
+func (values *intList) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode && node.Tag == "!!null" {
+		*values = nil
+		return nil
+	}
+	if node.Kind != yaml.SequenceNode {
+		return fmt.Errorf("reasoning_equals must be a list of integers")
+	}
+	out := make([]int, 0, len(node.Content))
+	for index, item := range node.Content {
+		parsed, err := parseIntNode(item)
+		if err != nil {
+			return fmt.Errorf("reasoning_equals[%d]: %w", index, err)
+		}
+		out = append(out, parsed)
+	}
+	*values = out
+	return nil
+}
+
+func parseIntNode(node *yaml.Node) (int, error) {
+	if node.Kind != yaml.ScalarNode {
+		return 0, fmt.Errorf("must be an integer")
+	}
+	raw := strings.TrimSpace(node.Value)
+	if raw == "" {
+		return 0, fmt.Errorf("must not be empty")
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("must be an integer: %q", node.Value)
+	}
+	return value, nil
 }
 
 func normalizeStrings(values []string) []string {
