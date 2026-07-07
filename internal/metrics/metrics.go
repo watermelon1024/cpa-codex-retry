@@ -10,20 +10,22 @@ import (
 const unknownModel = "(unknown)"
 
 type RequestRecord struct {
-	Timestamp      time.Time `json:"timestamp"`
-	Model          string    `json:"model"`
-	Format         string    `json:"format,omitempty"`
-	Stream         bool      `json:"stream"`
-	Intercepted    bool      `json:"intercepted"`
-	Blocked        bool      `json:"blocked"`
-	Attempts       int       `json:"attempts"`
-	RetryAttempts  int       `json:"retry_attempts"`
-	GuardMatches   int       `json:"guard_matches"`
-	Mode           string    `json:"mode,omitempty"`
-	Reason         string    `json:"reason,omitempty"`
-	ReasoningToken *int      `json:"reasoning_tokens,omitempty"`
-	ErrorCode      string    `json:"error_code,omitempty"`
-	HTTPStatus     int       `json:"http_status,omitempty"`
+	Timestamp       time.Time `json:"timestamp"`
+	Model           string    `json:"model"`
+	SourceFormat    string    `json:"source_format,omitempty"`
+	Format          string    `json:"format,omitempty"`
+	Stream          bool      `json:"stream"`
+	Intercepted     bool      `json:"intercepted"`
+	Blocked         bool      `json:"blocked"`
+	Attempts        int       `json:"attempts"`
+	RetryAttempts   int       `json:"retry_attempts"`
+	GuardMatches    int       `json:"guard_matches"`
+	Mode            string    `json:"mode,omitempty"`
+	Reason          string    `json:"reason,omitempty"`
+	ReasoningToken  *int      `json:"reasoning_tokens,omitempty"`
+	ReasoningSource string    `json:"reasoning_source,omitempty"`
+	ErrorCode       string    `json:"error_code,omitempty"`
+	HTTPStatus      int       `json:"http_status,omitempty"`
 }
 
 type Snapshot struct {

@@ -99,6 +99,9 @@ func TestNonStreamRetriesReasoningMatch(t *testing.T) {
 	if record.ReasoningToken == nil || *record.ReasoningToken != 516 {
 		t.Fatalf("reasoning token = %#v, want matched token 516", record.ReasoningToken)
 	}
+	if record.ReasoningSource != "usage.output_tokens_details.reasoning_tokens" {
+		t.Fatalf("reasoning source = %q", record.ReasoningSource)
+	}
 }
 
 func TestNonStreamRetriesInteractionsReasoningMatch(t *testing.T) {

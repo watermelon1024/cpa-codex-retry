@@ -20,12 +20,14 @@ type Decision struct {
 	Exempt           bool
 	Mode             string
 	ReasoningTokens  *int
+	ReasoningSource  string
 	BlockedReasoning *int
 	Reason           string
 }
 
 type Inspection struct {
 	ReasoningTokens *int
+	ReasoningSource string
 	Structure       Structure
 	RequestKind     string
 }

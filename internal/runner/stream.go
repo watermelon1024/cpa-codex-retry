@@ -24,7 +24,7 @@ type streamAttempt struct {
 }
 
 func (r StreamRunner) Run(ctx context.Context, exec cliproxy.ExecutorRequest, callbackID string) (cliproxy.ExecutorStreamResponse, *PluginError) {
-	record := metrics.RequestRecord{Model: exec.Model, Format: exec.Format, Stream: true}
+	record := metrics.RequestRecord{Model: exec.Model, SourceFormat: exec.SourceFormat, Format: exec.Format, Stream: true}
 	defer func() {
 		if r.Metrics != nil {
 			r.Metrics.Record(record)

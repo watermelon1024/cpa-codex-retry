@@ -18,7 +18,7 @@ type NonStreamRunner struct {
 }
 
 func (r NonStreamRunner) Run(ctx context.Context, exec cliproxy.ExecutorRequest, callbackID string) (cliproxy.ExecutorResponse, *PluginError) {
-	record := metrics.RequestRecord{Model: exec.Model, Format: exec.Format, Stream: false}
+	record := metrics.RequestRecord{Model: exec.Model, SourceFormat: exec.SourceFormat, Format: exec.Format, Stream: false}
 	defer func() {
 		if r.Metrics != nil {
 			r.Metrics.Record(record)
@@ -130,6 +130,7 @@ func markGuardMatch(record *metrics.RequestRecord, decision guard.Decision) {
 		value := *decision.ReasoningTokens
 		record.ReasoningToken = &value
 	}
+	record.ReasoningSource = decision.ReasoningSource
 	if decision.BlockedReasoning != nil {
 		value := *decision.BlockedReasoning
 		record.ReasoningToken = &value
@@ -145,4 +146,5 @@ func markDecisionObservation(record *metrics.RequestRecord, decision guard.Decis
 	}
 	value := *decision.ReasoningTokens
 	record.ReasoningToken = &value
+	record.ReasoningSource = decision.ReasoningSource
 }

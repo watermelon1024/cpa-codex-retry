@@ -51,20 +51,27 @@ func InspectJSON(body []byte, headers http.Header, requestBody []byte) Inspectio
 	if payload != nil {
 		ApplyStructure(payload, &structure, false)
 	}
+	reasoning, source := ExtractReasoningTokensWithSource(payload)
 	return Inspection{
-		ReasoningTokens: ExtractReasoningTokens(payload),
+		ReasoningTokens: reasoning,
+		ReasoningSource: source,
 		Structure:       structure,
 		RequestKind:     DetectRequestKind(headers, requestPayload),
 	}
 }
 
 func ExtractReasoningTokens(payload map[string]any) *int {
+	value, _ := ExtractReasoningTokensWithSource(payload)
+	return value
+}
+
+func ExtractReasoningTokensWithSource(payload map[string]any) (*int, string) {
 	for _, pointer := range reasoningPointers {
 		if value, ok := intFromJSONValue(nested(payload, pointer)); ok {
-			return &value
+			return &value, strings.Join(pointer, ".")
 		}
 	}
-	return nil
+	return nil, ""
 }
 
 func intFromJSONValue(value any) (int, bool) {

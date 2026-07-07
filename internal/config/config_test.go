@@ -13,6 +13,9 @@ func TestDecodeDefaults(t *testing.T) {
 	if cfg.StreamAction != StreamActionContinuation {
 		t.Fatalf("stream action = %q", cfg.StreamAction)
 	}
+	if !SupportsSourceFormat(cfg, "interactions") {
+		t.Fatalf("default source formats = %#v, want interactions support", cfg.SourceFormats)
+	}
 }
 
 func TestDecodeRejectsDisconnectStreamAction(t *testing.T) {

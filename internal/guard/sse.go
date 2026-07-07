@@ -10,7 +10,11 @@ type SSEParser struct {
 }
 
 func (p *SSEParser) Push(chunk []byte, current Inspection) (Inspection, bool) {
-	p.buffer += strings.ReplaceAll(string(chunk), "\r\n", "\n")
+	normalized := strings.ReplaceAll(string(chunk), "\r\n", "\n")
+	if payload, ok := parseRawJSONPayload(normalized); ok {
+		return applyStreamPayload(payload, current)
+	}
+	p.buffer += normalized
 	blocks := strings.Split(p.buffer, "\n\n")
 	p.buffer = blocks[len(blocks)-1]
 	matchedEarly := false
@@ -19,9 +23,9 @@ func (p *SSEParser) Push(chunk []byte, current Inspection) (Inspection, bool) {
 		if !ok {
 			continue
 		}
-		ApplyStructure(payload, &current.Structure, true)
-		if reasoning := ExtractReasoningTokens(payload); reasoning != nil {
-			current.ReasoningTokens = reasoning
+		var found bool
+		current, found = applyStreamPayload(payload, current)
+		if found {
 			matchedEarly = true
 		}
 	}
@@ -37,14 +41,25 @@ func (p *SSEParser) Flush(current Inspection) Inspection {
 	if !ok {
 		return current
 	}
-	ApplyStructure(payload, &current.Structure, true)
-	if reasoning := ExtractReasoningTokens(payload); reasoning != nil {
-		current.ReasoningTokens = reasoning
-	}
+	current, _ = applyStreamPayload(payload, current)
 	return current
 }
 
+func applyStreamPayload(payload map[string]any, current Inspection) (Inspection, bool) {
+	ApplyStructure(payload, &current.Structure, true)
+	reasoning, source := ExtractReasoningTokensWithSource(payload)
+	if reasoning == nil {
+		return current, false
+	}
+	current.ReasoningTokens = reasoning
+	current.ReasoningSource = source
+	return current, true
+}
+
 func parseSSEPayload(block string) (map[string]any, bool) {
+	if payload, ok := parseRawJSONPayload(block); ok {
+		return payload, true
+	}
 	var dataLines []string
 	for _, line := range strings.Split(block, "\n") {
 		line = strings.TrimRight(line, "\r")
@@ -57,6 +72,18 @@ func parseSSEPayload(block string) (map[string]any, bool) {
 	}
 	payloadText := strings.Join(dataLines, "\n")
 	if payloadText == "[DONE]" {
+		return nil, false
+	}
+	var payload map[string]any
+	if json.Unmarshal([]byte(payloadText), &payload) != nil {
+		return nil, false
+	}
+	return payload, true
+}
+
+func parseRawJSONPayload(raw string) (map[string]any, bool) {
+	payloadText := strings.TrimSpace(raw)
+	if payloadText == "" || payloadText == "[DONE]" || !strings.HasPrefix(payloadText, "{") {
 		return nil, false
 	}
 	var payload map[string]any

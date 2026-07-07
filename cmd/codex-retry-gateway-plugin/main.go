@@ -312,7 +312,7 @@ func writeResponse(response *C.cliproxy_buffer, raw []byte) {
 }
 
 func registration(_ config.Config) cliproxy.Registration {
-	formats := []string{"codex", "openai-response", "openai"}
+	formats := []string{"codex", "openai-response", "openai", "interactions"}
 	return cliproxy.Registration{
 		SchemaVersion: cliproxy.SchemaVersion,
 		Metadata: cliproxy.Metadata{

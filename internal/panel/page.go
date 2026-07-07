@@ -534,7 +534,9 @@ th {
       value = match ? Number(match[1]) : null;
     }
     if (value === null || value === undefined) return '';
-    return t('reasoningTokens') + ': ' + number(value);
+    var source = String(item.reasoning_source || '').trim();
+    var suffix = source ? ' (' + source + ')' : '';
+    return t('reasoningTokens') + ': ' + number(value) + suffix;
   }
 
   function formatEventReason(item) {

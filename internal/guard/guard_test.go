@@ -22,12 +22,26 @@ func TestInspectJSONFindsInteractionsReasoningTokens(t *testing.T) {
 	if inspection.ReasoningTokens == nil || *inspection.ReasoningTokens != 516 {
 		t.Fatalf("ReasoningTokens = %#v, want 516", inspection.ReasoningTokens)
 	}
+	if inspection.ReasoningSource != "metadata.total_usage.total_thought_tokens" {
+		t.Fatalf("ReasoningSource = %q", inspection.ReasoningSource)
+	}
 }
 
 func TestInspectJSONFindsTopLevelReasoningTokens(t *testing.T) {
 	inspection := InspectJSON([]byte(`{"usage":{"reasoning_tokens":516}}`), nil, nil)
 	if inspection.ReasoningTokens == nil || *inspection.ReasoningTokens != 516 {
 		t.Fatalf("ReasoningTokens = %#v, want 516", inspection.ReasoningTokens)
+	}
+}
+
+func TestSSEParserFindsRawJSONInteractionsReasoningTokens(t *testing.T) {
+	parser := &SSEParser{}
+	inspection, found := parser.Push([]byte(`{"event_type":"finish","metadata":{"total_usage":{"total_thought_tokens":516}}}`), Inspection{})
+	if !found || inspection.ReasoningTokens == nil || *inspection.ReasoningTokens != 516 {
+		t.Fatalf("Push() = (%#v, %v), want reasoning token 516", inspection, found)
+	}
+	if inspection.ReasoningSource != "metadata.total_usage.total_thought_tokens" {
+		t.Fatalf("ReasoningSource = %q", inspection.ReasoningSource)
 	}
 }
 

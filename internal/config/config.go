@@ -59,7 +59,7 @@ type rawConfig struct {
 func Default() Config {
 	return Config{
 		Enabled:                     true,
-		SourceFormats:               []string{"codex", "openai-response", "openai"},
+		SourceFormats:               []string{"codex", "openai-response", "openai", "interactions"},
 		InterceptRuleMode:           RuleReasoningTokens,
 		ReasoningMatchMode:          MatchFormula518NMinus2,
 		ReasoningEquals:             []int{516, 1034, 1552},
