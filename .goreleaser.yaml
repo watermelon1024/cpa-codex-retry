@@ -16,7 +16,7 @@ builds:
     goamd64: [v1, v3]
     env:
       - CGO_ENABLED=1
-      - CC=./scripts/zig-cc
+      - CC=zig-cc
     flags: [-trimpath]
     ldflags: [-s -w]
 

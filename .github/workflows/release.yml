@@ -29,6 +29,10 @@ jobs:
         with:
           version: latest
 
+      - name: Add scripts to PATH
+        shell: bash
+        run: echo "${GITHUB_WORKSPACE}/scripts" >> "$GITHUB_PATH"
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
