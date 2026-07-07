@@ -1,0 +1,39 @@
+version: 2
+
+project_name: cpa-codex-retry
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: c-shared-lib
+    main: ./cmd/codex-retry-gateway-plugin
+    binary: cpa-codex-retry
+    buildmode: c-shared
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64]
+    goamd64: [v1, v3]
+    env:
+      - CGO_ENABLED=1
+      - CC=./scripts/zig-cc
+    flags: [-trimpath]
+    ldflags: [-s -w]
+
+archives:
+  - id: c-shared-lib
+    ids: [c-shared-lib]
+    formats: [binary]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      {{- if and .Amd64 (ne .Amd64 "v1") }}_{{ .Amd64 }}{{ end }}
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
