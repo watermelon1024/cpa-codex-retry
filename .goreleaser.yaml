@@ -9,7 +9,9 @@ before:
 builds:
   - id: c-shared-lib
     main: ./cmd/codex-retry-gateway-plugin
-    binary: cpa-codex-retry
+    binary: >-
+      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}
+      {{- if and .Amd64 (ne .Amd64 "v1") }}_{{ .Amd64 }}{{ end }}
     buildmode: c-shared
     goos: [linux, windows, darwin]
     goarch: [amd64, arm64]
