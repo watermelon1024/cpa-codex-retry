@@ -130,16 +130,20 @@ type RPCExecutorRequest struct {
 }
 
 type ExecutorRequest struct {
-	Model           string         `json:"Model"`
-	Format          string         `json:"Format"`
-	Stream          bool           `json:"Stream"`
-	Alt             string         `json:"Alt,omitempty"`
-	Headers         http.Header    `json:"Headers,omitempty"`
-	Query           url.Values     `json:"Query,omitempty"`
-	OriginalRequest []byte         `json:"OriginalRequest,omitempty"`
-	SourceFormat    string         `json:"SourceFormat,omitempty"`
-	Payload         []byte         `json:"Payload,omitempty"`
-	Metadata        map[string]any `json:"Metadata,omitempty"`
+	AuthID          string            `json:"AuthID,omitempty"`
+	AuthProvider    string            `json:"AuthProvider,omitempty"`
+	Model           string            `json:"Model"`
+	Format          string            `json:"Format"`
+	Stream          bool              `json:"Stream"`
+	Alt             string            `json:"Alt,omitempty"`
+	Headers         http.Header       `json:"Headers,omitempty"`
+	Query           url.Values        `json:"Query,omitempty"`
+	OriginalRequest []byte            `json:"OriginalRequest,omitempty"`
+	SourceFormat    string            `json:"SourceFormat,omitempty"`
+	Payload         []byte            `json:"Payload,omitempty"`
+	Metadata        map[string]any    `json:"Metadata,omitempty"`
+	AuthMetadata    map[string]any    `json:"AuthMetadata,omitempty"`
+	AuthAttributes  map[string]string `json:"AuthAttributes,omitempty"`
 }
 
 type ExecutorResponse struct {

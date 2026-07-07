@@ -40,6 +40,7 @@ func (r NonStreamRunner) Run(ctx context.Context, exec cliproxy.ExecutorRequest,
 			return cliproxy.ExecutorResponse{}, pluginErr
 		}
 		decision := r.inspect(resp, exec, body, effort)
+		markDecisionObservation(&record, decision)
 		if !decision.Matched || !r.Config.InterceptNonStreaming {
 			return executorResponse(resp), nil
 		}
@@ -125,8 +126,23 @@ func markGuardMatch(record *metrics.RequestRecord, decision guard.Decision) {
 	record.GuardMatches++
 	record.Mode = decision.Mode
 	record.Reason = decision.Reason
+	if decision.ReasoningTokens != nil {
+		value := *decision.ReasoningTokens
+		record.ReasoningToken = &value
+	}
 	if decision.BlockedReasoning != nil {
 		value := *decision.BlockedReasoning
 		record.ReasoningToken = &value
 	}
+}
+
+func markDecisionObservation(record *metrics.RequestRecord, decision guard.Decision) {
+	if record.Mode == "" {
+		record.Mode = decision.Mode
+	}
+	if record.ReasoningToken != nil || decision.ReasoningTokens == nil {
+		return
+	}
+	value := *decision.ReasoningTokens
+	record.ReasoningToken = &value
 }

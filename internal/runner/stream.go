@@ -46,6 +46,7 @@ func (r StreamRunner) Run(ctx context.Context, exec cliproxy.ExecutorRequest, ca
 			}
 			return cliproxy.ExecutorStreamResponse{}, pluginErr
 		}
+		markDecisionObservation(&record, result.Decision)
 		if result.Decision.Matched && r.Config.InterceptStreaming {
 			markGuardMatch(&record, result.Decision)
 		}

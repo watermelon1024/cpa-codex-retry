@@ -17,6 +17,20 @@ func TestMatchFormulaReasoningTokens(t *testing.T) {
 	}
 }
 
+func TestInspectJSONFindsInteractionsReasoningTokens(t *testing.T) {
+	inspection := InspectJSON([]byte(`{"event_type":"finish","metadata":{"total_usage":{"total_thought_tokens":516}}}`), nil, nil)
+	if inspection.ReasoningTokens == nil || *inspection.ReasoningTokens != 516 {
+		t.Fatalf("ReasoningTokens = %#v, want 516", inspection.ReasoningTokens)
+	}
+}
+
+func TestInspectJSONFindsTopLevelReasoningTokens(t *testing.T) {
+	inspection := InspectJSON([]byte(`{"usage":{"reasoning_tokens":516}}`), nil, nil)
+	if inspection.ReasoningTokens == nil || *inspection.ReasoningTokens != 516 {
+		t.Fatalf("ReasoningTokens = %#v, want 516", inspection.ReasoningTokens)
+	}
+}
+
 func TestContextCompactionZeroExempt(t *testing.T) {
 	cfg := config.Default()
 	reasoning := 0

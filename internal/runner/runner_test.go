@@ -96,6 +96,46 @@ func TestNonStreamRetriesReasoningMatch(t *testing.T) {
 	if !record.Intercepted || record.Blocked || record.Attempts != 2 || record.RetryAttempts != 1 || record.GuardMatches != 1 {
 		t.Fatalf("metrics record = %#v", record)
 	}
+	if record.ReasoningToken == nil || *record.ReasoningToken != 516 {
+		t.Fatalf("reasoning token = %#v, want matched token 516", record.ReasoningToken)
+	}
+}
+
+func TestNonStreamRetriesInteractionsReasoningMatch(t *testing.T) {
+	metricSink := &captureMetrics{}
+	host := &fakeHost{executeResponses: []cliproxy.HostModelExecutionResponse{
+		jsonResponse(`{"event_type":"finish","metadata":{"total_usage":{"total_thought_tokens":516}}}`),
+		jsonResponse(`{"event_type":"finish","metadata":{"total_usage":{"total_thought_tokens":1}}}`),
+	}}
+	_, err := (NonStreamRunner{Config: config.Default(), Host: host, Metrics: metricSink}).Run(context.Background(), execRequest(false), "cb")
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if len(host.executeBodies) != 2 || len(metricSink.records) != 1 {
+		t.Fatalf("attempts=%d metrics=%d, want 2 attempts and 1 metric", len(host.executeBodies), len(metricSink.records))
+	}
+	record := metricSink.records[0]
+	if !record.Intercepted || record.RetryAttempts != 1 || record.ReasoningToken == nil || *record.ReasoningToken != 516 {
+		t.Fatalf("metrics record = %#v", record)
+	}
+}
+
+func TestNonStreamRecordsReasoningTokensWithoutMatch(t *testing.T) {
+	metricSink := &captureMetrics{}
+	host := &fakeHost{executeResponses: []cliproxy.HostModelExecutionResponse{
+		jsonResponse(`{"usage":{"reasoning_tokens":12}}`),
+	}}
+	_, err := (NonStreamRunner{Config: config.Default(), Host: host, Metrics: metricSink}).Run(context.Background(), execRequest(false), "cb")
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if len(metricSink.records) != 1 {
+		t.Fatalf("metrics records len = %d, want 1", len(metricSink.records))
+	}
+	record := metricSink.records[0]
+	if record.Intercepted || record.ReasoningToken == nil || *record.ReasoningToken != 12 {
+		t.Fatalf("metrics record = %#v", record)
+	}
 }
 
 func TestNonStreamBlocksAfterRetryLimit(t *testing.T) {

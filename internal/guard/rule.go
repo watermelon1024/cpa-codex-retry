@@ -10,7 +10,7 @@ import (
 func Match(cfg config.Config, inspection Inspection, effort string) Decision {
 	reasoning := inspection.ReasoningTokens
 	if inspection.RequestKind == RequestKindContextCompaction && intValue(reasoning) == 0 {
-		return Decision{Exempt: true, Mode: cfg.InterceptRuleMode, Reason: "context_compaction"}
+		return Decision{Exempt: true, Mode: cfg.InterceptRuleMode, ReasoningTokens: reasoning, Reason: "context_compaction"}
 	}
 	if cfg.InterceptRuleMode == RuleFinalOnlyHighXHigh {
 		return matchFinalOnly(cfg, inspection, effort)
@@ -20,12 +20,13 @@ func Match(cfg config.Config, inspection Inspection, effort string) Decision {
 
 func matchReasoningTokens(cfg config.Config, reasoning *int) Decision {
 	if reasoning == nil || !reasoningMatched(cfg, *reasoning) {
-		return Decision{Mode: RuleReasoningTokens}
+		return Decision{Mode: RuleReasoningTokens, ReasoningTokens: reasoning}
 	}
 	value := *reasoning
 	return Decision{
 		Matched:          true,
 		Mode:             RuleReasoningTokens,
+		ReasoningTokens:  &value,
 		BlockedReasoning: &value,
 		Reason:           fmt.Sprintf("reasoning_tokens=%d", value),
 	}
@@ -35,11 +36,12 @@ func matchFinalOnly(cfg config.Config, inspection Inspection, effort string) Dec
 	reasoning := intValue(inspection.ReasoningTokens)
 	effort = strings.ToLower(strings.TrimSpace(effort))
 	if !inspection.Structure.FinalAnswerOnly() || reasoning == 0 || !highEffort(effort) {
-		return Decision{Mode: cfg.InterceptRuleMode}
+		return Decision{Mode: cfg.InterceptRuleMode, ReasoningTokens: inspection.ReasoningTokens}
 	}
 	return Decision{
 		Matched:          true,
 		Mode:             cfg.InterceptRuleMode,
+		ReasoningTokens:  inspection.ReasoningTokens,
 		BlockedReasoning: inspection.ReasoningTokens,
 		Reason:           "final_answer_only_high_xhigh",
 	}

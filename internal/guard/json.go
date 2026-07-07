@@ -4,14 +4,44 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 var reasoningPointers = [][]string{
 	{"usage", "output_tokens_details", "reasoning_tokens"},
 	{"usage", "completion_tokens_details", "reasoning_tokens"},
+	{"usage", "reasoning_tokens"},
+	{"usage", "total_thought_tokens"},
+	{"usage", "thoughtsTokenCount"},
 	{"response", "usage", "output_tokens_details", "reasoning_tokens"},
 	{"response", "usage", "completion_tokens_details", "reasoning_tokens"},
+	{"response", "usage", "reasoning_tokens"},
+	{"response", "usage", "total_thought_tokens"},
+	{"response", "usage", "thoughtsTokenCount"},
+	{"interaction", "usage", "reasoning_tokens"},
+	{"interaction", "usage", "total_thought_tokens"},
+	{"interaction", "usage", "thoughtsTokenCount"},
+	{"interaction", "total_usage", "reasoning_tokens"},
+	{"interaction", "total_usage", "total_thought_tokens"},
+	{"interaction", "metadata", "total_usage", "reasoning_tokens"},
+	{"interaction", "metadata", "total_usage", "total_thought_tokens"},
+	{"metadata", "usage", "reasoning_tokens"},
+	{"metadata", "usage", "total_thought_tokens"},
+	{"metadata", "total_usage", "reasoning_tokens"},
+	{"metadata", "total_usage", "total_thought_tokens"},
+	{"total_usage", "reasoning_tokens"},
+	{"total_usage", "total_thought_tokens"},
+	{"usageMetadata", "thoughtsTokenCount"},
+	{"usage_metadata", "thoughtsTokenCount"},
+	{"usage_metadata", "thoughts_token_count"},
+	{"usage_metadata", "total_thought_tokens"},
+	{"tokens", "reasoning_tokens"},
+	{"detail", "reasoning_tokens"},
+	{"reasoning_tokens"},
+	{"total_thought_tokens"},
+	{"thoughtsTokenCount"},
+	{"thoughts_token_count"},
 }
 
 func InspectJSON(body []byte, headers http.Header, requestBody []byte) Inspection {
@@ -30,14 +60,31 @@ func InspectJSON(body []byte, headers http.Header, requestBody []byte) Inspectio
 
 func ExtractReasoningTokens(payload map[string]any) *int {
 	for _, pointer := range reasoningPointers {
-		if value, ok := nested(payload, pointer).(float64); ok {
-			intValue := int(value)
-			if float64(intValue) == value {
-				return &intValue
-			}
+		if value, ok := intFromJSONValue(nested(payload, pointer)); ok {
+			return &value
 		}
 	}
 	return nil
+}
+
+func intFromJSONValue(value any) (int, bool) {
+	switch typed := value.(type) {
+	case float64:
+		intValue := int(typed)
+		return intValue, float64(intValue) == typed
+	case json.Number:
+		intValue, err := strconv.Atoi(typed.String())
+		return intValue, err == nil
+	case string:
+		intValue, err := strconv.Atoi(strings.TrimSpace(typed))
+		return intValue, err == nil
+	case int:
+		return typed, true
+	case int64:
+		return int(typed), int64(int(typed)) == typed
+	default:
+		return 0, false
+	}
 }
 
 func ApplyStructure(payload map[string]any, structure *Structure, fromStream bool) {

@@ -19,6 +19,7 @@ type Decision struct {
 	Matched          bool
 	Exempt           bool
 	Mode             string
+	ReasoningTokens  *int
 	BlockedReasoning *int
 	Reason           string
 }
