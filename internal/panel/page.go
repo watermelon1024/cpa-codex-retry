@@ -368,11 +368,19 @@ th {
       cleanBadge: 'clean',
       models: 'models',
       events: 'events',
+      reasoningTokens: 'reasoning tokens',
+      reasoningMatch: 'reasoning token rule',
+      finalOnlyMatch: 'final-answer-only rule',
+      contextCompaction: 'context compaction',
+      capacityError: 'model capacity',
+      upstreamError: 'upstream error',
+      upstreamStatus: 'upstream status',
+      guardTriggered: 'intercept rule triggered',
       loadFailed: 'Failed to load metrics'
     },
     'zh-TW': {
       title: 'Codex Retry',
-      subtitle: '此插件進程啟動以來的 guard 活動統計。',
+      subtitle: '此插件進程啟動以來的檢查與攔截統計。',
       refresh: '重新整理',
       allModels: '全部模型',
       total: '請求數',
@@ -383,7 +391,7 @@ th {
       byModel: '依模型統計',
       model: '模型',
       recent: '最近活動',
-      empty: '目前還沒有 guarded request。',
+      empty: '目前還沒有經過檢查的請求。',
       updated: '更新',
       stream: '串流',
       nonStream: '非串流',
@@ -392,11 +400,19 @@ th {
       cleanBadge: '通過',
       models: '個模型',
       events: '筆',
+      reasoningTokens: '推理 token',
+      reasoningMatch: '命中推理 token 規則',
+      finalOnlyMatch: '命中最終答案規則',
+      contextCompaction: '上下文壓縮',
+      capacityError: '模型容量不足',
+      upstreamError: '上游錯誤',
+      upstreamStatus: '上游狀態錯誤',
+      guardTriggered: '攔截規則觸發',
       loadFailed: '讀取統計失敗'
     },
     'zh-CN': {
       title: 'Codex Retry',
-      subtitle: '此插件进程启动以来的 guard 活动统计。',
+      subtitle: '此插件进程启动以来的检查与拦截统计。',
       refresh: '刷新',
       allModels: '全部模型',
       total: '请求数',
@@ -407,7 +423,7 @@ th {
       byModel: '按模型统计',
       model: '模型',
       recent: '最近活动',
-      empty: '目前还没有 guarded request。',
+      empty: '目前还没有经过检查的请求。',
       updated: '更新',
       stream: '流式',
       nonStream: '非流式',
@@ -416,6 +432,14 @@ th {
       cleanBadge: '通过',
       models: '个模型',
       events: '条',
+      reasoningTokens: '推理 token',
+      reasoningMatch: '命中推理 token 规则',
+      finalOnlyMatch: '命中最终答案规则',
+      contextCompaction: '上下文压缩',
+      capacityError: '模型容量不足',
+      upstreamError: '上游错误',
+      upstreamStatus: '上游状态错误',
+      guardTriggered: '拦截规则触发',
       loadFailed: '读取统计失败'
     }
   };
@@ -503,6 +527,33 @@ th {
     return date.toLocaleString(state.lang);
   }
 
+  function formatReasoningTokens(item) {
+    var value = item.reasoning_tokens;
+    if (value === null || value === undefined) {
+      var match = String(item.reason || '').match(/^reasoning_tokens=(\d+)$/);
+      value = match ? Number(match[1]) : null;
+    }
+    if (value === null || value === undefined) return '';
+    return t('reasoningTokens') + ': ' + number(value);
+  }
+
+  function formatEventReason(item) {
+    var reason = String(item.reason || '').trim();
+    if (reason.indexOf('reasoning_tokens=') === 0) return t('reasoningMatch');
+    if (reason === 'final_answer_only_high_xhigh') return t('finalOnlyMatch');
+    if (reason === 'context_compaction') return t('contextCompaction');
+    return formatErrorCode(item.error_code) || reason;
+  }
+
+  function formatErrorCode(code) {
+    code = String(code || '').trim();
+    if (code === 'capacity') return t('capacityError');
+    if (code === 'upstream_error') return t('upstreamError');
+    if (code === 'upstream_status') return t('upstreamStatus');
+    if (code === 'reasoning_guard_triggered') return t('guardTriggered');
+    return code;
+  }
+
   function selectedStats(snapshot) {
     if (!state.model) return snapshot;
     var found = (snapshot.models || []).find(function (item) { return item.model === state.model; });
@@ -565,7 +616,8 @@ th {
       event.querySelector('.eventMeta').textContent = [
         formatTime(item.timestamp),
         item.stream ? t('stream') : t('nonStream'),
-        item.reason || item.error_code || ''
+        formatReasoningTokens(item),
+        formatEventReason(item)
       ].filter(Boolean).join(' / ');
       var badgeNode = event.querySelector('.badge');
       badgeNode.textContent = badge;
