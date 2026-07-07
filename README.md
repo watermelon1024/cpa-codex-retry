@@ -2,24 +2,21 @@
 
 Languages: **English** | [繁體中文](README.zh-TW.md) | [简体中文](README.zh-CN.md)
 
-This plugin adds a reasoning-response guard to CLIProxyAPI.
+This project is currently kept as a CLIProxyAPI plugin experiment.
 
-It routes selected Codex/OpenAI requests through a CLIProxyAPI plugin executor, sends the request through CLIProxyAPI's normal upstream model execution callbacks, inspects the upstream response, and retries or blocks responses that match known suspicious reasoning patterns.
+## Current Status
 
-The goal is simple: keep the client talking to CLIProxyAPI normally, while adding an extra protection layer for reasoning-token anomalies and recoverable upstream capacity failures.
+> [!CAUTION]
+> This plugin is not effective for its intended reasoning-token guard.
+>
+> CLIProxyAPI records reasoning tokens in usage records after model execution. The plugin executor callback only receives the response body or stream chunks, and those payloads do not reliably include the final reasoning token count. Because the plugin cannot reliably read `reasoning_tokens` before the request completes, it cannot reliably retry or block suspicious responses.
 
-## Features
+## Implemented Surface
 
-- Guards Codex/OpenAI compatible request formats: `codex`, `openai-response`, and `openai`.
-- Retries non-streaming responses when suspicious `reasoning_tokens` are detected.
-- Buffers and inspects streaming responses before forwarding them downstream.
-- Supports Responses streaming continuation recovery.
-- Detects the default `reasoning_tokens = 518*n - 2` pattern, such as `516 / 1034 / 1552 / 2070 ...`.
-- Supports manual `reasoning_equals` matching.
-- Supports the experimental `final_answer_only_high_xhigh` rule.
-- Exempts explicit `context_compaction` responses when `reasoning_tokens=0`.
-- Retries the known upstream capacity error internally.
-- Sanitizes continuation replay by removing `previous_response_id`, replayed reasoning items, `reasoning.encrypted_content`, and `encrypted_content`.
+- CLIProxyAPI plugin executor registration and management panel.
+- Response/body inspection for cases where usage is still present in the returned payload.
+- Retry and block logic for detected suspicious reasoning-token patterns.
+- Recovery logic for selected streaming Responses payloads.
 
 ## Build
 

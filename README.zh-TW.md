@@ -2,24 +2,21 @@
 
 語言： [English](README.md) | **繁體中文** | [简体中文](README.zh-CN.md)
 
-這個插件替 CLIProxyAPI 加上一層 reasoning response guard。
+這個專案目前保留為 CLIProxyAPI 插件實驗。
 
-它會把指定的 Codex/OpenAI 請求路由到 CLIProxyAPI 插件 executor，透過 CLIProxyAPI 原本的 upstream model execution callback 發出請求，檢查上游回應，並在命中已知可疑 reasoning 模式時重試或阻擋。
+## 目前狀態
 
-目的很單純：讓 client 照常連 CLIProxyAPI，同時多一層保護，用來處理 reasoning token 異常和可恢復的 upstream capacity 錯誤。
+> [!CAUTION]
+> 這個插件無法有效完成原本設計的 reasoning token guard。
+>
+> CLIProxyAPI 會在模型執行完成後，才把 reasoning token 寫進 usage record。插件 executor callback 只能拿到 response body 或 stream chunk，而這些 payload 不一定會帶最終 reasoning token 數量。因此插件無法在請求完成前可靠取得 `reasoning_tokens`，也就無法可靠地重試或阻擋可疑回應。
 
-## 功能
+## 已實作範圍
 
-- 保護 Codex/OpenAI 相容請求格式：`codex`、`openai-response`、`openai`。
-- 非串流回應偵測到可疑 `reasoning_tokens` 時自動重試。
-- 串流回應會先緩衝並檢查，再轉發給下游。
-- 支援 Responses 串流續寫恢復。
-- 預設偵測 `reasoning_tokens = 518*n - 2`，例如 `516 / 1034 / 1552 / 2070 ...`。
-- 支援手動 `reasoning_equals` 匹配。
-- 支援實驗規則 `final_answer_only_high_xhigh`。
-- 明確的 `context_compaction` 回應在 `reasoning_tokens=0` 時豁免。
-- 針對已知 upstream capacity 錯誤做內部重試。
-- 續寫 replay 會清理 `previous_response_id`、replayed reasoning items、`reasoning.encrypted_content` 和 `encrypted_content`。
+- CLIProxyAPI 插件 executor 註冊與管理面板。
+- 在 returned payload 仍包含 usage 時，檢查 response body。
+- 對偵測到的可疑 reasoning token 模式做重試或阻擋。
+- 針對部分 Responses 串流 payload 做恢復處理。
 
 ## 建置
 
