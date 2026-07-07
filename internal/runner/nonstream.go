@@ -8,20 +8,33 @@ import (
 	"github.com/watermelon1024/cpa-codex-retry/internal/cliproxy"
 	"github.com/watermelon1024/cpa-codex-retry/internal/config"
 	"github.com/watermelon1024/cpa-codex-retry/internal/guard"
+	"github.com/watermelon1024/cpa-codex-retry/internal/metrics"
 )
 
 type NonStreamRunner struct {
-	Config config.Config
-	Host   Host
+	Config  config.Config
+	Host    Host
+	Metrics MetricsRecorder
 }
 
 func (r NonStreamRunner) Run(ctx context.Context, exec cliproxy.ExecutorRequest, callbackID string) (cliproxy.ExecutorResponse, *PluginError) {
+	record := metrics.RequestRecord{Model: exec.Model, Format: exec.Format, Stream: false}
+	defer func() {
+		if r.Metrics != nil {
+			r.Metrics.Record(record)
+		}
+	}()
+
 	body := requestBody(exec)
 	effort := requestEffort(body)
 	for attempt := 0; attempt <= r.Config.GuardRetryAttempts; attempt++ {
+		record.Attempts = attempt + 1
 		resp, pluginErr := r.executeAttempt(ctx, exec, callbackID, body)
 		if pluginErr != nil {
+			record.ErrorCode = pluginErr.Code
+			record.HTTPStatus = pluginErr.HTTPStatus
 			if r.shouldRetryCapacity(pluginErr, nil, attempt) {
+				record.RetryAttempts++
 				continue
 			}
 			return cliproxy.ExecutorResponse{}, pluginErr
@@ -30,12 +43,18 @@ func (r NonStreamRunner) Run(ctx context.Context, exec cliproxy.ExecutorRequest,
 		if !decision.Matched || !r.Config.InterceptNonStreaming {
 			return executorResponse(resp), nil
 		}
+		markGuardMatch(&record, decision)
 		if attempt < r.Config.GuardRetryAttempts {
+			record.RetryAttempts++
 			r.log(ctx, callbackID, "info", "non-stream reasoning guard retry", logFields(attempt, decision))
 			continue
 		}
+		record.Blocked = true
+		record.HTTPStatus = r.Config.NonStreamStatusCode
 		return cliproxy.ExecutorResponse{}, blockedError(r.Config.NonStreamStatusCode, blockMessage(decision))
 	}
+	record.Blocked = true
+	record.HTTPStatus = http.StatusBadGateway
 	return cliproxy.ExecutorResponse{}, blockedError(http.StatusBadGateway, "retry loop exhausted")
 }
 
@@ -98,5 +117,16 @@ func logFields(attempt int, decision guard.Decision) map[string]any {
 		"attempt": attempt,
 		"mode":    decision.Mode,
 		"reason":  decision.Reason,
+	}
+}
+
+func markGuardMatch(record *metrics.RequestRecord, decision guard.Decision) {
+	record.Intercepted = true
+	record.GuardMatches++
+	record.Mode = decision.Mode
+	record.Reason = decision.Reason
+	if decision.BlockedReasoning != nil {
+		value := *decision.BlockedReasoning
+		record.ReasoningToken = &value
 	}
 }

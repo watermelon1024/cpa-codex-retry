@@ -8,11 +8,13 @@ import (
 	"github.com/watermelon1024/cpa-codex-retry/internal/cliproxy"
 	"github.com/watermelon1024/cpa-codex-retry/internal/config"
 	"github.com/watermelon1024/cpa-codex-retry/internal/guard"
+	"github.com/watermelon1024/cpa-codex-retry/internal/metrics"
 )
 
 type StreamRunner struct {
-	Config config.Config
-	Host   Host
+	Config  config.Config
+	Host    Host
+	Metrics MetricsRecorder
 }
 
 type streamAttempt struct {
@@ -22,27 +24,46 @@ type streamAttempt struct {
 }
 
 func (r StreamRunner) Run(ctx context.Context, exec cliproxy.ExecutorRequest, callbackID string) (cliproxy.ExecutorStreamResponse, *PluginError) {
+	record := metrics.RequestRecord{Model: exec.Model, Format: exec.Format, Stream: true}
+	defer func() {
+		if r.Metrics != nil {
+			r.Metrics.Record(record)
+		}
+	}()
+
 	baseBody := requestBody(exec)
 	body := append([]byte(nil), baseBody...)
 	effort := requestEffort(baseBody)
 	for attempt := 0; attempt <= r.Config.GuardRetryAttempts; attempt++ {
+		record.Attempts = attempt + 1
 		result, pluginErr := r.streamAttempt(ctx, exec, callbackID, body, effort)
 		if pluginErr != nil {
+			record.ErrorCode = pluginErr.Code
+			record.HTTPStatus = pluginErr.HTTPStatus
 			if r.shouldRetryCapacity(pluginErr, nil, attempt) {
+				record.RetryAttempts++
 				continue
 			}
 			return cliproxy.ExecutorStreamResponse{}, pluginErr
 		}
+		if result.Decision.Matched && r.Config.InterceptStreaming {
+			markGuardMatch(&record, result.Decision)
+		}
 		nextBody, retry := r.nextStreamBody(ctx, callbackID, baseBody, result, attempt)
 		if retry {
+			record.RetryAttempts++
 			body = nextBody
 			continue
 		}
 		if result.Decision.Matched && r.Config.InterceptStreaming {
+			record.Blocked = true
+			record.HTTPStatus = r.Config.NonStreamStatusCode
 			return cliproxy.ExecutorStreamResponse{}, blockedError(r.Config.NonStreamStatusCode, blockMessage(result.Decision))
 		}
 		return streamResponse(result.Headers, result.Chunks, r.Config.StripEncryptedContent), nil
 	}
+	record.Blocked = true
+	record.HTTPStatus = http.StatusBadGateway
 	return cliproxy.ExecutorStreamResponse{}, blockedError(http.StatusBadGateway, "stream retry loop exhausted")
 }
 

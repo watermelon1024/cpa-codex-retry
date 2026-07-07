@@ -8,6 +8,7 @@ import (
 
 	"github.com/watermelon1024/cpa-codex-retry/internal/cliproxy"
 	"github.com/watermelon1024/cpa-codex-retry/internal/config"
+	"github.com/watermelon1024/cpa-codex-retry/internal/metrics"
 )
 
 type fakeHost struct {
@@ -22,6 +23,14 @@ type fakeStream struct {
 	headers http.Header
 	chunks  []cliproxy.HostModelStreamReadResponse
 	err     error
+}
+
+type captureMetrics struct {
+	records []metrics.RequestRecord
+}
+
+func (m *captureMetrics) Record(record metrics.RequestRecord) {
+	m.records = append(m.records, record)
 }
 
 func (h *fakeHost) ExecuteModel(_ context.Context, req cliproxy.RPCHostModelExecutionRequest) (cliproxy.HostModelExecutionResponse, error) {
@@ -68,16 +77,24 @@ func (h *fakeHost) CloseModelStream(context.Context, string) error {
 func (h *fakeHost) Log(context.Context, string, string, map[string]any) {}
 
 func TestNonStreamRetriesReasoningMatch(t *testing.T) {
+	metricSink := &captureMetrics{}
 	host := &fakeHost{executeResponses: []cliproxy.HostModelExecutionResponse{
 		jsonResponse(`{"usage":{"output_tokens_details":{"reasoning_tokens":516}}}`),
 		jsonResponse(`{"usage":{"output_tokens_details":{"reasoning_tokens":1}}}`),
 	}}
-	resp, err := (NonStreamRunner{Config: config.Default(), Host: host}).Run(context.Background(), execRequest(false), "cb")
+	resp, err := (NonStreamRunner{Config: config.Default(), Host: host, Metrics: metricSink}).Run(context.Background(), execRequest(false), "cb")
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 	if string(resp.Payload) == "" || len(host.executeBodies) != 2 {
 		t.Fatalf("payload=%q attempts=%d", resp.Payload, len(host.executeBodies))
+	}
+	if len(metricSink.records) != 1 {
+		t.Fatalf("metrics records len = %d, want 1", len(metricSink.records))
+	}
+	record := metricSink.records[0]
+	if !record.Intercepted || record.Blocked || record.Attempts != 2 || record.RetryAttempts != 1 || record.GuardMatches != 1 {
+		t.Fatalf("metrics record = %#v", record)
 	}
 }
 

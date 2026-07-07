@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/watermelon1024/cpa-codex-retry/internal/cliproxy"
+	"github.com/watermelon1024/cpa-codex-retry/internal/metrics"
 )
 
 const capacityErrorText = "Selected model is at capacity. Please try a different model."
@@ -18,6 +19,10 @@ type Host interface {
 	ReadModelStream(context.Context, string) (cliproxy.HostModelStreamReadResponse, error)
 	CloseModelStream(context.Context, string) error
 	Log(context.Context, string, string, map[string]any)
+}
+
+type MetricsRecorder interface {
+	Record(metrics.RequestRecord)
 }
 
 type PluginError struct {

@@ -66,15 +66,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"unsafe"
 
 	"github.com/watermelon1024/cpa-codex-retry/internal/cliproxy"
 	"github.com/watermelon1024/cpa-codex-retry/internal/config"
+	"github.com/watermelon1024/cpa-codex-retry/internal/metrics"
+	"github.com/watermelon1024/cpa-codex-retry/internal/panel"
 	"github.com/watermelon1024/cpa-codex-retry/internal/runner"
 )
 
 var activeConfig atomic.Value
+var statsRecorder = metrics.NewRecorder(200)
 
 func init() {
 	activeConfig.Store(config.Default())
@@ -140,6 +144,10 @@ func handleMethod(method string, request []byte) ([]byte, error) {
 		return execute(request)
 	case cliproxy.MethodExecutorExecuteStream:
 		return executeStream(request)
+	case cliproxy.MethodManagementRegister:
+		return registerManagement()
+	case cliproxy.MethodManagementHandle:
+		return handleManagement(request)
 	case cliproxy.MethodExecutorCountTokens, cliproxy.MethodExecutorHTTPRequest:
 		return errorEnvelope("not_supported", method+" is not supported by this plugin", http.StatusNotImplemented), nil
 	default:
@@ -186,7 +194,7 @@ func execute(raw []byte) ([]byte, error) {
 	if err := json.Unmarshal(raw, &req); err != nil {
 		return nil, err
 	}
-	resp, pluginErr := (runner.NonStreamRunner{Config: currentConfig(), Host: cHostClient{}}).
+	resp, pluginErr := (runner.NonStreamRunner{Config: currentConfig(), Host: cHostClient{}, Metrics: statsRecorder}).
 		Run(context.Background(), req.ExecutorRequest, req.HostCallbackID)
 	return executorEnvelope(resp, pluginErr)
 }
@@ -196,9 +204,57 @@ func executeStream(raw []byte) ([]byte, error) {
 	if err := json.Unmarshal(raw, &req); err != nil {
 		return nil, err
 	}
-	resp, pluginErr := (runner.StreamRunner{Config: currentConfig(), Host: cHostClient{}}).
+	resp, pluginErr := (runner.StreamRunner{Config: currentConfig(), Host: cHostClient{}, Metrics: statsRecorder}).
 		Run(context.Background(), req.ExecutorRequest, req.HostCallbackID)
 	return executorEnvelope(resp, pluginErr)
+}
+
+func registerManagement() ([]byte, error) {
+	return okEnvelope(cliproxy.ManagementRegistrationResponse{
+		Resources: []cliproxy.ResourceRoute{{
+			Path:        "/status",
+			Menu:        "Codex Retry",
+			Description: "Codex retry guard statistics.",
+		}},
+	})
+}
+
+func handleManagement(raw []byte) ([]byte, error) {
+	var req cliproxy.ManagementRequest
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &req); err != nil {
+			return nil, err
+		}
+	}
+	if wantsManagementJSON(req) {
+		body, err := json.Marshal(statsRecorder.Snapshot())
+		if err != nil {
+			return nil, err
+		}
+		return okEnvelope(cliproxy.ManagementResponse{
+			StatusCode: http.StatusOK,
+			Headers: http.Header{
+				"Cache-Control": []string{"no-store"},
+				"Content-Type":  []string{"application/json; charset=utf-8"},
+			},
+			Body: body,
+		})
+	}
+	return okEnvelope(cliproxy.ManagementResponse{
+		StatusCode: http.StatusOK,
+		Headers: http.Header{
+			"Cache-Control": []string{"no-store"},
+			"Content-Type":  []string{"text/html; charset=utf-8"},
+		},
+		Body: panel.HTML(),
+	})
+}
+
+func wantsManagementJSON(req cliproxy.ManagementRequest) bool {
+	if strings.EqualFold(req.Query.Get("format"), "json") || req.Query.Get("json") == "1" {
+		return true
+	}
+	return strings.Contains(strings.ToLower(req.Headers.Get("Accept")), "application/json")
 }
 
 func executorEnvelope(result any, pluginErr *runner.PluginError) ([]byte, error) {
@@ -272,6 +328,7 @@ func registration(_ config.Config) cliproxy.Registration {
 			ExecutorModelScope:    "static",
 			ExecutorInputFormats:  formats,
 			ExecutorOutputFormats: formats,
+			ManagementAPI:         true,
 		},
 	}
 }

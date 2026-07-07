@@ -21,6 +21,8 @@ const (
 	MethodExecutorExecuteStream = "executor.execute_stream"
 	MethodExecutorCountTokens   = "executor.count_tokens"
 	MethodExecutorHTTPRequest   = "executor.http_request"
+	MethodManagementRegister    = "management.register"
+	MethodManagementHandle      = "management.handle"
 	MethodHostModelExecute      = "host.model.execute"
 	MethodHostModelStream       = "host.model.execute_stream"
 	MethodHostModelStreamRead   = "host.model.stream_read"
@@ -74,6 +76,32 @@ type Capabilities struct {
 	ExecutorModelScope    string   `json:"executor_model_scope"`
 	ExecutorInputFormats  []string `json:"executor_input_formats,omitempty"`
 	ExecutorOutputFormats []string `json:"executor_output_formats,omitempty"`
+	ManagementAPI         bool     `json:"management_api"`
+}
+
+type ManagementRegistrationResponse struct {
+	Resources []ResourceRoute `json:"resources,omitempty"`
+}
+
+type ResourceRoute struct {
+	Path        string `json:"Path"`
+	Menu        string `json:"Menu"`
+	Description string `json:"Description"`
+}
+
+type ManagementRequest struct {
+	Method         string      `json:"Method"`
+	Path           string      `json:"Path"`
+	Headers        http.Header `json:"Headers,omitempty"`
+	Query          url.Values  `json:"Query,omitempty"`
+	Body           []byte      `json:"Body,omitempty"`
+	HostCallbackID string      `json:"host_callback_id,omitempty"`
+}
+
+type ManagementResponse struct {
+	StatusCode int         `json:"StatusCode"`
+	Headers    http.Header `json:"Headers,omitempty"`
+	Body       []byte      `json:"Body,omitempty"`
 }
 
 type ModelRouteRequest struct {
