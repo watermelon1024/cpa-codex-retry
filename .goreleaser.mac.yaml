@@ -7,31 +7,29 @@ before:
     - go mod download
 
 builds:
-  - id: c-shared-linux-windows
+  - id: c-shared-darwin
     main: ./cmd/codex-retry-gateway-plugin
     binary: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if and .Amd64 (ne .Amd64 "v1") }}_{{ .Amd64 }}{{ end }}'
     buildmode: c-shared
-    goos: [linux, windows]
+    goos: [darwin]
     goarch: [amd64, arm64]
     goamd64: [v1, v3]
     env:
       - CGO_ENABLED=1
-      - CC=zig-cc
     flags: [-trimpath]
     ldflags: [-s -w]
 
 archives:
-  - id: c-shared-linux-windows
-    ids: [c-shared-linux-windows]
+  - id: c-shared-darwin
+    ids: [c-shared-darwin]
     formats: [binary]
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if and .Amd64 (ne .Amd64 "v1") }}_{{ .Amd64 }}{{ end }}'
 
 checksum:
-  name_template: checksums_linux_windows.txt
+  name_template: checksums_darwin.txt
+
+release:
+  mode: append
 
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+  disable: true
